@@ -152,7 +152,9 @@ impl Policy {
             Policy::MSF | Policy::MSFB => -job.service_req,
             Policy::SRA | Policy::SRAB => job.rem_size * job.service_req,
             Policy::LRA | Policy::LRAB => -job.rem_size * job.service_req,
-            Policy::DB(_) | Policy::DBE | Policy::DBB(_) | Policy::DBEB | Policy::BPT(_) => job.arrival_time,
+            Policy::DB(_) | Policy::DBE | Policy::DBB(_) | Policy::DBEB | Policy::BPT(_) => {
+                job.arrival_time
+            }
         }
     }
 }
@@ -252,7 +254,6 @@ fn backfill_hogged(vec: &Vec<Job>, hogged: f64, hog_indices: Vec<usize>) -> Vec<
 
 // make the bucket giving a separate function for the IP policy to do its thing
 fn assign_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64) -> Vec<usize> {
-
     let increment = (upper - lower) / (k as f64);
     if DEBUG {
         println!("Increment is {}, k is {}", increment, k);
@@ -268,7 +269,7 @@ fn assign_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64) -> Vec<usize
 
 fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool) -> Vec<usize> {
     assert!(k % 2 == 1);
-    
+
     let bucket_numbers: Vec<usize> = assign_buckets(vec, k, upper, lower);
     // evaluate bucket scores
     let mut bucket_counts: Vec<f64> = vec![0.0; k];
@@ -339,7 +340,6 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
 }
 
 fn get_d(c: usize) -> usize {
-
     if c == 1 {
         return 1;
     }
@@ -363,20 +363,28 @@ fn c_to_bucket_pair(c: usize) -> Vec<usize> {
 
 fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     assert!((k & (k - 1)) == 0);
-    
+
     // bucket 1 is the smallest bucket
-    let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0).iter().map(|b| b + 1).collect();
+    let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0)
+        .iter()
+        .map(|b| b + 1)
+        .collect();
 
     // evaluate bucket set scores
     let mut set_scores: Vec<usize> = vec![0; k];
 
+    let mut bucket_counts = vec![0; k];
+    for &num in &bucket_numbers {
+        bucket_counts[num-1] += 1
+    }
+    /*
     for ii in 0..k {
         let c = ii + 1;
         // set 1 is the first set
         let bucket_set = c_to_bucket_pair(c);
 
         let reps: usize = k / c.next_power_of_two();
-        
+
         // counts of buckets in bucket_set starting from bucket 1
         let q: Vec<usize> = bucket_set
             .iter()
@@ -394,6 +402,18 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
         set_scores[ii] = score;
     }
+    */
+    for ii in 0..k {
+        let c = ii + 1;
+        // set 1 is the first set
+        let bucket_set = c_to_bucket_pair(c);
+
+        let reps: usize = k / c.next_power_of_two();
+        
+        for jj in 0..bucket_set.len() {
+            set_scores[ii] += bucket_counts[bucket_set[jj]-1].min(reps)
+        }
+    }
 
     // now we know the bucket scores. find the highest scoring set, then return non-repeating
     // indices to corresponding jobs
@@ -401,14 +421,20 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     let big_score = *set_scores.iter().max().unwrap();
 
     //get the index of the top_scoring set.
-    let s_i = set_scores.iter().position(|x| x == &big_score).expect("Top score not found");
-    
+    let s_i = set_scores
+        .iter()
+        .position(|x| x == &big_score)
+        .expect("Top score not found");
+
     let target_c = s_i + 1;
     let target_reps = k / target_c.next_power_of_two();
     let target_buckets = c_to_bucket_pair(target_c);
 
     if DEBUG {
-        println!("searching for bucket set with c value {}, repeating {} times, bucket values {:?}",target_c, target_reps, target_buckets);
+        println!(
+            "searching for bucket set with c value {}, repeating {} times, bucket values {:?}",
+            target_c, target_reps, target_buckets
+        );
     }
 
     let mut found_indices: Vec<usize> = vec![];
@@ -435,7 +461,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     }
     */
 
-    for target_b in target_buckets {
+    for target_b in target_buckets {-1-1
         let mut count = 0;
         for kk in 0..bucket_numbers.len() {
             let current = bucket_numbers[kk];
@@ -443,7 +469,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
                 found_indices.push(kk);
                 count += 1;
                 if count == target_reps {
-                    break
+                    break;
                 }
             }
         }
@@ -458,9 +484,8 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     }
     // now we haave indices of the buckets to work on
     // TODO: write a test for this
-    
+
     found_indices
-    
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
