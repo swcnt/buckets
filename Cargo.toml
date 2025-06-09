@@ -1,5 +1,5 @@
 [package]
-name = "mg1-r"
+name = "bucketpols"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,3 +7,4 @@ edition = "2024"
 noisy_float = "0.2.0"
 rand = "0.8.5"
 rand_distr = "0.4.3"
+integer-partitions = "0.1.1"

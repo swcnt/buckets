@@ -5,6 +5,7 @@ use rand_distr::Exp;
 use rand_distr::Gamma;
 use rand_distr::Uniform;
 use std::f64::INFINITY;
+use integer_partitions::Partitions;
 /*
 // statrs has mean and sampling formulas, not needed for now?
 use statrs::distribution::Exp as aExp;
@@ -461,7 +462,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     }
     */
 
-    for target_b in target_buckets {-1-1
+    for target_b in target_buckets { //-1-1
         let mut count = 0;
         for kk in 0..bucket_numbers.len() {
             let current = bucket_numbers[kk];
@@ -486,6 +487,60 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // TODO: write a test for this
 
     found_indices
+}
+
+
+struct score_ip {
+    partition: Vec<usize>,
+    score: usize,
+}
+
+fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
+    
+    // smallest bucket is 1
+    let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0)
+        .iter()
+        .map(|b| b + 1)
+        .collect();
+
+    // evaluate bucket set scores
+    let mut ip_scores: Vec<score_ip> = vec![];
+
+
+    // bucket_counts is the quantity of jobs in each bucket
+    
+    let mut bucket_counts = vec![0; k];
+    for &num in &bucket_numbers {
+        bucket_counts[num-1] += 1
+    }
+    // get integer partitions are score them
+
+    let mut ipar = Partitions::new(k);
+    
+    while let Some(_) = ipar.next() {
+        // get the current partition
+        let current_partition: Vec<usize> = ipar.next().unwrap().to_vec();
+        let mut current_score: usize = 0;
+        // iterate over the partition and match the counts to bucket_counts, then score
+        
+        for bucket_num in &current_partition {
+            // get multiplicity of each bucket number in the integer partition
+            let multiplicity = current_partition.iter().filter(|&num| num == bucket_num).count();
+
+            let count = bucket_counts[bucket_num-1]; // number of bucket_num buckets we have
+            current_score += multiplicity.min(count);
+        }
+        let pair = score_ip {
+            partition: current_partition,
+            score: current_score,
+        };
+        ip_scores.push(pair);
+         
+    }
+
+    // TODO: find the highest scoring partition
+    vec![1,2,3]
+
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
