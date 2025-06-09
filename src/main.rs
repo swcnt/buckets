@@ -1,4 +1,4 @@
-#![allow(non_snake_case, dead_code, unused_assignments)]
+#![allow(non_snake_case, dead_code, unused_assignments,non_camel_case_types)]
 use noisy_float::prelude::*;
 use rand::prelude::*;
 use rand_distr::Exp;
@@ -489,7 +489,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     found_indices
 }
 
-
+#[derive(Debug, Clone)]
 struct score_ip {
     partition: Vec<usize>,
     score: usize,
@@ -521,9 +521,17 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         // get the current partition
         let current_partition: Vec<usize> = ipar.next().unwrap().to_vec();
         let mut current_score: usize = 0;
-        // iterate over the partition and match the counts to bucket_counts, then score
-        
+        // iterate over the partition and match the counts to bucket_counts, then score    
+        let mut seen = vec![];
         for bucket_num in &current_partition {
+            // only add score for new numbers because of the multiplicity calculation
+            // (sorry)
+            if seen.contains(&bucket_num) {
+                continue;
+            }
+            else {
+                seen.push(bucket_num);
+            }
             // get multiplicity of each bucket number in the integer partition
             let multiplicity = current_partition.iter().filter(|&num| num == bucket_num).count();
 
@@ -535,12 +543,15 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
             score: current_score,
         };
         ip_scores.push(pair);
-         
+
     }
 
-    // TODO: find the highest scoring partition
+    let top_scorer: score_ip = ip_scores.iter().max_by_key(|p: &&score_ip| p.score).unwrap().clone();
+    
+    //TODO: get indices from the top scoring integer partition. can use code from before.
+    let target_buckets = top_scorer.partition;
+    
     vec![1,2,3]
-
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
