@@ -1,11 +1,11 @@
-#![allow(non_snake_case, dead_code, unused_assignments,non_camel_case_types)]
+#![allow(non_snake_case, dead_code, unused_assignments, non_camel_case_types)]
+use integer_partitions::Partitions;
 use noisy_float::prelude::*;
 use rand::prelude::*;
 use rand_distr::Exp;
 use rand_distr::Gamma;
 use rand_distr::Uniform;
 use std::f64::INFINITY;
-use integer_partitions::Partitions;
 /*
 // statrs has mean and sampling formulas, not needed for now?
 use statrs::distribution::Exp as aExp;
@@ -31,7 +31,7 @@ fn main() {
     //let job_req_dist = Dist::Constant(0.45);
     let job_req_dist = Dist::Uniform(0.0, 1.0);
 
-    let policy = Policy::BPT(8);
+    let policy = Policy::AdaptiveDoubleBucket;
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
@@ -139,6 +139,7 @@ enum Policy {
     DBE,
     DBEB,
     BPT(usize),
+    AdaptiveDoubleBucket,
 }
 
 impl Policy {
@@ -153,9 +154,12 @@ impl Policy {
             Policy::MSF | Policy::MSFB => -job.service_req,
             Policy::SRA | Policy::SRAB => job.rem_size * job.service_req,
             Policy::LRA | Policy::LRAB => -job.rem_size * job.service_req,
-            Policy::DB(_) | Policy::DBE | Policy::DBB(_) | Policy::DBEB | Policy::BPT(_) => {
-                job.arrival_time
-            }
+            Policy::DB(_)
+            | Policy::DBE
+            | Policy::DBB(_)
+            | Policy::DBEB
+            | Policy::BPT(_)
+            | Policy::AdaptiveDoubleBucket => job.arrival_time,
         }
     }
 }
@@ -376,7 +380,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
     let mut bucket_counts = vec![0; k];
     for &num in &bucket_numbers {
-        bucket_counts[num-1] += 1
+        bucket_counts[num - 1] += 1
     }
     /*
     for ii in 0..k {
@@ -410,9 +414,9 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         let bucket_set = c_to_bucket_pair(c);
 
         let reps: usize = k / c.next_power_of_two();
-        
+
         for jj in 0..bucket_set.len() {
-            set_scores[ii] += bucket_counts[bucket_set[jj]-1].min(reps)
+            set_scores[ii] += bucket_counts[bucket_set[jj] - 1].min(reps)
         }
     }
 
@@ -462,7 +466,8 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     }
     */
 
-    for target_b in target_buckets { //-1-1
+    for target_b in target_buckets {
+        //-1-1
         let mut count = 0;
         for kk in 0..bucket_numbers.len() {
             let current = bucket_numbers[kk];
@@ -496,7 +501,6 @@ struct score_ip {
 }
 
 fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
-    
     // smallest bucket is 1
     let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0)
         .iter()
@@ -506,36 +510,37 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // evaluate bucket set scores
     let mut ip_scores: Vec<score_ip> = vec![];
 
-
     // bucket_counts is the quantity of jobs in each bucket
-    
+
     let mut bucket_counts = vec![0; k];
     for &num in &bucket_numbers {
-        bucket_counts[num-1] += 1
+        bucket_counts[num - 1] += 1
     }
     // get integer partitions are score them
 
     let mut ipar = Partitions::new(k);
-    
+
     while let Some(_) = ipar.next() {
         // get the current partition
         let current_partition: Vec<usize> = ipar.next().unwrap().to_vec();
         let mut current_score: usize = 0;
-        // iterate over the partition and match the counts to bucket_counts, then score    
+        // iterate over the partition and match the counts to bucket_counts, then score
         let mut seen = vec![];
         for bucket_num in &current_partition {
             // only add score for new numbers because of the multiplicity calculation
             // (sorry)
             if seen.contains(&bucket_num) {
                 continue;
-            }
-            else {
+            } else {
                 seen.push(bucket_num);
             }
             // get multiplicity of each bucket number in the integer partition
-            let multiplicity = current_partition.iter().filter(|&num| num == bucket_num).count();
+            let multiplicity = current_partition
+                .iter()
+                .filter(|&num| num == bucket_num)
+                .count();
 
-            let count = bucket_counts[bucket_num-1]; // number of bucket_num buckets we have
+            let count = bucket_counts[bucket_num - 1]; // number of bucket_num buckets we have
             current_score += multiplicity.min(count);
         }
         let pair = score_ip {
@@ -543,15 +548,18 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
             score: current_score,
         };
         ip_scores.push(pair);
-
     }
 
-    let top_scorer: score_ip = ip_scores.iter().max_by_key(|p: &&score_ip| p.score).unwrap().clone();
-    
+    let top_scorer: score_ip = ip_scores
+        .iter()
+        .max_by_key(|p: &&score_ip| p.score)
+        .unwrap()
+        .clone();
+
     //TODO: get indices from the top scoring integer partition. can use code from before.
     let target_buckets = top_scorer.partition;
-    
-    vec![1,2,3]
+
+    vec![1, 2, 3]
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
@@ -561,6 +569,11 @@ fn lambda_to_k(lambda: f64) -> usize {
         attempt_k = attempt_k + 1
     }
     attempt_k as usize
+}
+
+fn length_to_k(length: usize) -> usize {
+    let square_root = length.isqrt();
+    square_root + ((square_root + 1) % 2)
 }
 
 fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64) -> Vec<usize> {
@@ -586,6 +599,9 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
         Policy::DBE => eval_buckets(vec, lambda_to_k(lambda), u_lim, l_lim, false),
         Policy::DBEB => eval_buckets(vec, lambda_to_k(lambda), u_lim, l_lim, true),
         Policy::BPT(k) => p2_buckets(vec, k, false),
+        Policy::AdaptiveDoubleBucket => {
+            eval_buckets(vec, length_to_k(vec.len()), u_lim, l_lim, false)
+        }
     }
 }
 
