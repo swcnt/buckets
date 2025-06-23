@@ -6,6 +6,7 @@ use rand_distr::Exp;
 use rand_distr::Gamma;
 use rand_distr::Uniform;
 use std::f64::INFINITY;
+use smallvec::{SmallVec, smallvec};
 /*
 // statrs has mean and sampling formulas, not needed for now?
 use statrs::distribution::Exp as aExp;
@@ -31,7 +32,7 @@ fn main() {
     //let job_req_dist = Dist::Constant(0.45);
     let job_req_dist = Dist::Uniform(0.0, 1.0);
 
-    let policy = Policy::AdaptiveDoubleBucket;
+    let policy = Policy::BPT(8);
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
@@ -355,11 +356,11 @@ fn get_d(c: usize) -> usize {
     d
 }
 
-fn c_to_bucket_pair(c: usize) -> Vec<usize> {
+fn c_to_bucket_pair(c: usize) -> SmallVec<[usize; 2]> {
     let d = c.next_power_of_two(); // highest power of 2
     assert!((d & (d - 1)) == 0);
 
-    let mut bucket_set = vec![c];
+    let mut bucket_set = smallvec![c];
     if d - c != 0 {
         bucket_set.push(d - c);
     }
@@ -416,13 +417,17 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         let reps: usize = k / c.next_power_of_two();
 
         for jj in 0..bucket_set.len() {
-            set_scores[ii] += bucket_counts[bucket_set[jj] - 1].min(reps)
+            let num_in_bucket = bucket_counts[bucket_set[jj] - 1];
+            let num_jobs_served = num_in_bucket.min(reps);
+            set_scores[ii] += num_in_bucket * num_jobs_served;
         }
     }
 
     // now we know the bucket scores. find the highest scoring set, then return non-repeating
     // indices to corresponding jobs
 
+    let (s_i, _big_score) = set_scores.iter().enumerate().max_by_key(|(_index, score)| *score).expect("At least one set");
+    /*
     let big_score = *set_scores.iter().max().unwrap();
 
     //get the index of the top_scoring set.
@@ -430,6 +435,7 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         .iter()
         .position(|x| x == &big_score)
         .expect("Top score not found");
+        */
 
     let target_c = s_i + 1;
     let target_reps = k / target_c.next_power_of_two();
@@ -467,7 +473,6 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     */
 
     for target_b in target_buckets {
-        //-1-1
         let mut count = 0;
         for kk in 0..bucket_numbers.len() {
             let current = bucket_numbers[kk];
@@ -557,7 +562,8 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         .clone();
 
     //TODO: get indices from the top scoring integer partition. can use code from before.
-    let target_buckets = top_scorer.partition;
+    // let target_buckets = top_scorer.partition;
+    todo!();
 
     vec![1, 2, 3]
 }
