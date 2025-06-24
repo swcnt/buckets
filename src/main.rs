@@ -7,12 +7,6 @@ use rand_distr::Gamma;
 use rand_distr::Uniform;
 use std::f64::INFINITY;
 use smallvec::{SmallVec, smallvec};
-/*
-// statrs has mean and sampling formulas, not needed for now?
-use statrs::distribution::Exp as aExp;
-use statrs:(:distribution::Continuous as aCon;
-use statrs::distribution::Gamma as aGammma;
-*/
 
 const EPSILON: f64 = 1e-8;
 const DEBUG: bool = false;
@@ -65,8 +59,8 @@ struct Job {
 
 #[derive(Debug, Clone, Copy)]
 enum Dist {
+    // various distribution functions
     Expon(f64),
-    // i know hyperexp with prob_low = 0 is just an exponential, but i wanna try this :>
     Hyperexp(f64, f64, f64),
     Gamma(f64, f64),
     Uniform(f64, f64),
@@ -75,6 +69,7 @@ enum Dist {
 
 impl Dist {
     fn sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        // take a sample from a given distribution
         match self {
             Dist::Hyperexp(low_mu, high_mu, prob_low) => {
                 let mu = if *prob_low == 1.0 {
@@ -94,6 +89,7 @@ impl Dist {
         }
     }
     fn mean(&self) -> f64 {
+        // return the mean of a given distribution
         use Dist::*;
         match self {
             Hyperexp(low_mu, high_mu, prob_low) => prob_low / low_mu + (1.0 - prob_low) / high_mu,
@@ -105,6 +101,7 @@ impl Dist {
     }
 
     fn meansquare(&self) -> f64 {
+        // return the mean square of a given distribution
         use Dist::*;
         match self {
             Hyperexp(low_mu, high_mu, prob_low) => {
@@ -166,6 +163,9 @@ impl Policy {
 }
 
 fn fcfstest(arr_lambda: f64, size_dist: &Dist) {
+    // if FCFS is being used, can predict expected behavior of queueing system
+    // used to ensure that simulation worked previously.
+
     let avg_size = size_dist.mean();
 
     // rho -- must be less than 1
@@ -182,6 +182,8 @@ fn fcfstest(arr_lambda: f64, size_dist: &Dist) {
 }
 
 fn qscan(vec: &Vec<Job>, num_servers: usize) -> usize {
+    // only works for sorting-based policies.
+    // iterate through a queue until the service requirement is maxed out.
     let mut index = 0;
     let total_resource = num_servers as f64;
     if DEBUG {
@@ -206,11 +208,14 @@ fn qscan(vec: &Vec<Job>, num_servers: usize) -> usize {
 }
 
 fn take_to_vec(num_take: usize) -> Vec<usize> {
+    // convert a usize to a collection of indices of jobs that can be worked on if qscan was used.
     let v: Vec<usize> = (0..num_take).collect();
     v
 }
 
 fn backfill(vec: &Vec<Job>, num_servers: usize) -> Vec<usize> {
+    // backfilling that assumes you haven't chosen anything to work on yet.
+    // works for sorting-based policies with backfilling
     let total_resource = num_servers as f64;
     if DEBUG {
         println!("Backfilling up to {}", total_resource);
@@ -234,6 +239,8 @@ fn backfill(vec: &Vec<Job>, num_servers: usize) -> Vec<usize> {
 }
 
 fn backfill_hogged(vec: &Vec<Job>, hogged: f64, hog_indices: Vec<usize>) -> Vec<usize> {
+    // backfilling function that takes in a vector of indices that have already been chosen 
+    // by your policy. returns a vector of all indices that can be worked on after backfilling.
     let total_resource = 1.0;
     if DEBUG {
         println!("Backfilling up to {}", total_resource);
@@ -260,6 +267,8 @@ fn backfill_hogged(vec: &Vec<Job>, hogged: f64, hog_indices: Vec<usize>) -> Vec<
 
 // make the bucket giving a separate function for the IP policy to do its thing
 fn assign_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64) -> Vec<usize> {
+    // return a vector the same length as the queue,
+    // containing the bucket label of the job at its corresponding index.
     let increment = (upper - lower) / (k as f64);
     if DEBUG {
         println!("Increment is {}, k is {}", increment, k);
@@ -274,6 +283,7 @@ fn assign_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64) -> Vec<usize
 }
 
 fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool) -> Vec<usize> {
+    //Double bucket policy, forms and scores bucket pairs.
     assert!(k % 2 == 1);
 
     let bucket_numbers: Vec<usize> = assign_buckets(vec, k, upper, lower);
@@ -346,6 +356,8 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
 }
 
 fn get_d(c: usize) -> usize {
+    // not needed
+    // calculate the lowest power of two greater than c.
     if c == 1 {
         return 1;
     }
@@ -357,6 +369,9 @@ fn get_d(c: usize) -> usize {
 }
 
 fn c_to_bucket_pair(c: usize) -> SmallVec<[usize; 2]> {
+    // convert c (a number corresponding to a certain pair of buckets of powers of two)
+    // eg. can return just [4], or [3,1] and other combinations that fit regardless of repetitions.
+
     let d = c.next_power_of_two(); // highest power of 2
     assert!((d & (d - 1)) == 0);
 
@@ -368,6 +383,9 @@ fn c_to_bucket_pair(c: usize) -> SmallVec<[usize; 2]> {
 }
 
 fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
+    // assigns buckets of powers of two to each job in a queue and returns indices corresponding to
+    // the highest-scoring set. 
+    
     assert!((k & (k - 1)) == 0);
 
     // bucket 1 is the smallest bucket
@@ -506,6 +524,9 @@ struct score_ip {
 }
 
 fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
+    // assigns buckets of powers of two to each job in a queue and returns indices corresponding to
+    // the highest-scoring set. 
+
     // smallest bucket is 1
     let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0)
         .iter()
@@ -569,6 +590,7 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
+    // convert lambda to k assuming epsilon = (2-lambda)/(2*lambda)
     let k_mid = (lambda + 2.0) / (2.0 - lambda);
     let mut attempt_k = k_mid.ceil() as usize;
     if attempt_k % 2 == 0 {
@@ -578,11 +600,13 @@ fn lambda_to_k(lambda: f64) -> usize {
 }
 
 fn length_to_k(length: usize) -> usize {
+    // get a workable k value by square rooting the number of jobs in the queue.
     let square_root = length.isqrt();
     square_root + ((square_root + 1) % 2)
 }
 
 fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64) -> Vec<usize> {
+    // use various policies to get a vector of indices of jobs in the queue that can be worked on.
     let l_lim = 0.0;
     let u_lim = num_servers as f64;
     match policy {
@@ -612,6 +636,7 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
 }
 
 fn simulate(
+    // main simulation loop.
     policy: Policy,
     num_servers: usize,
     num_jobs: u64,
@@ -643,7 +668,6 @@ fn simulate(
             println!("Error: queue length past threshold");
             break;
         }
-        // i'll test policies later once FCFS metrics are confirmed (wow they are now)
         if DEBUG {
             println!(
                 "Time is {}: | Queue: {:?} | Current work: {} Total work: {}",
@@ -707,11 +731,6 @@ fn simulate(
         index_workable
             .iter()
             .for_each(|index| queue[*index].rem_size -= timestep);
-
-        // Remove jobs that may have finished (only the first num_servers) jobs
-        // in the queue need to be checked.
-        // this is so smart izzy what
-        // i dont know why they reverse here though
 
         for &index in index_workable.iter().rev() {
             assert!(index < queue.len());

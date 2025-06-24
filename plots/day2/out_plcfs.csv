@@ -1,0 +1,27 @@
+Lambda; Mean Response Time;
+Policy : PLCFS, Duration: Expon(1.0), Requirement: Uniform(0.01, 1.0), Jobs per data point: 10000000, Seed: 2
+0.1; 1.055057267529762;
+0.2; 1.1221610265765953;
+0.3; 1.2034772773709437;
+0.4; 1.3031985865566935;
+0.5; 1.4285780277233402;
+0.6; 1.5890943811937666;
+0.7; 1.8020999973486;
+0.8; 2.095889664562409;
+0.9; 2.524566449502488;
+1; 3.2018302944458;
+1.1; 4.431143954437135;
+1.2; 7.394248008556043;
+1.3; 23.139192992285487;
+Error: queue length past threshold
+1.4; 20.729927208295678;
+Error: queue length past threshold
+1.5; 6.859161454756527;
+Error: queue length past threshold
+1.6; 3.2563688320460464;
+Error: queue length past threshold
+1.7; 2.352202659874542;
+Error: queue length past threshold
+1.8; 1.5861351680638403;
+Error: queue length past threshold
+1.9; 1.256447239979678;

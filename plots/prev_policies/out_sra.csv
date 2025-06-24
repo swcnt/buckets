@@ -1,0 +1,27 @@
+Lambda; Mean Response Time;
+Policy : SRA, Duration: Expon(1.0), Requirement: Uniform(0.0, 1.0), Jobs per data point: 10000000, Seed: 3
+0.1; 1.0299866148453514;
+0.2; 1.063855669072579;
+0.3; 1.1027268568895556;
+0.4; 1.147945806890676;
+0.5; 1.201428631897517;
+0.6; 1.265779383921953;
+0.7; 1.3453511437957382;
+0.8; 1.4466403705168251;
+0.9; 1.582945779504642;
+1; 1.7792727342007801;
+1.1; 2.0943476805568313;
+1.2; 2.720025306828988;
+1.3; 5.095840677206967;
+Error: queue length past threshold
+1.4; 51.95661684596118;
+Error: queue length past threshold
+1.5; 32.364554193701956;
+Error: queue length past threshold
+1.6; 36.94690141349868;
+Error: queue length past threshold
+1.7; 34.37226801143419;
+Error: queue length past threshold
+1.8; 21.674892754250873;
+Error: queue length past threshold
+1.9; 15.980736255187646;
