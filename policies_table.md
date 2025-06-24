@@ -16,7 +16,7 @@
 | LRAB, | Largest remaining area \+ backfilling |
 | DB(usize), | Double bucket (two buckets are picked out of k total buckets (or one largest one) and one job from each bucket is worked on) |
 | DBB(usize), | Double bucket \+ backfilling |
-| DBE, | Double bucket, but k is chosen as a function of lambda. (k \= (lambda+2)/(2-lambda)) because epsilon \= (lambda+2)/2 |
+| DBE, | Double bucket, but k is chosen as a function of lambda. (k \= (lambda+2)/(2-lambda)) because epsilon \= (2-lambda)/(2*lambda) |
 | DBEB, | Double bucket adapting to k \+ backfilling |
 | BPT(usize), | Buckets of powers of two (eg. eight ones, two fours, if k is 8\) |
 | AdaptiveDoubleBucket, | Adaptive Double Bucket (based on \# of jobs in queue) |
