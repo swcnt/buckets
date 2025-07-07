@@ -118,27 +118,31 @@ impl Dist {
 
 #[derive(Debug, Clone, Copy)]
 enum Policy {
-    FCFS,
-    PLCFS,
-    SRPT,
-    FCFSB,
-    SRPTB,
-    PLCFSB,
-    LSF,
-    LSFB,
-    MSF,
-    MSFB,
-    SRA,
-    SRAB,
-    LRA,
-    LRAB,
-    DB(usize),
-    DBB(usize),
-    DBE,
-    DBEB,
-    BPT(usize),
-    AdaptiveDoubleBucket,
-    IPB(usize),
+    // Baseline policies
+    FCFS, // First-Come First-Served
+    PLCFS, // Preemptive Last-Come First-Served
+    SRPT, // Shortest Remaining Processing Time
+    FCFSB, // First-Come First-Served, preemptive backfilling
+    SRPTB, // Shortest Remaining Processing Time, preemptive backfilling
+    PLCFSB, // Preemptive Last-Come First-Served
+    LSF, // Preemptive Least Servers First
+    LSFB, // Preemptive Least Servers First, preemptive backfilling
+    MSF, // Preemptive Most Servers First
+    MSFB, // Preemptive Most Servers First, preemptive backfilling
+    SRA, // Smallest remaining area
+    SRAB, // Smallest remaining area, preemptive backfilling
+    LRA, // Largest remaining area
+    LRAB, // Largest remaining area, preemptive backfilling
+    DB(usize), // Double bucket, explicit K
+    DBB(usize), // Double bucket, explicit K, preemptive backfilling
+    DBE, // Double bucket, K based on lambda
+    DBEB, // Double bucket, K based on lambda, preemptive backfilling
+    BPT(usize), // Bucket powers of 2, explicit K
+    // TODO: BPT w/ backfilling
+    AdaptiveDoubleBucket, // Double bucket, K based on queue length
+    // TODO: Adaptive Double Bucket w/ backfilling
+    IPB(usize), // Integer partitions buckets, explicit K
+    // TODO: IPB w/ backfilling
 }
 
 impl Policy {
