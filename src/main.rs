@@ -584,10 +584,6 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         .unwrap()
         .clone();
 
-    //TODO: get indices from the top scoring integer partition. can use code from before.
-    // let target_buckets = top_scorer.partition;
-    //
-
     let target_buckets = top_scorer.partition;
     if DEBUG {
         println!("Chosen partition: {:?}",target_buckets);
@@ -600,9 +596,10 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
     for ii in 0..bucket_numbers.len() {
         for jj in found_count..target_buckets.len() {
-           if target_buckets.contains(&bucket_numbers[ii]) {
+           if target_buckets[jj] == bucket_numbers[ii] {
                found_indices.push(ii);
                found_count += 1;
+               break;
            }
            else {
                continue;
@@ -719,7 +716,7 @@ fn simulate(
         index_workable.sort();
 
         if DEBUG {
-            println!("{:?} jobs eligible for work.", index_workable);
+            println!("Indices of jobs chosen for work: {:?}", index_workable);
         }
 
         let capacity: f64 = index_workable
