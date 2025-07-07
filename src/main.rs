@@ -31,7 +31,7 @@ fn main() {
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 13..20 {
+    for lam_base in 1..20 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -593,7 +593,7 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // thisll be less efficient than the powers of two one
 
     let mut found_count: usize = 0;
-
+    /*
     for ii in 0..bucket_numbers.len() {
         for jj in found_count..target_buckets.len() {
            if target_buckets[jj] == bucket_numbers[ii] {
@@ -604,6 +604,34 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
            else {
                continue;
            }
+        }
+    }
+    */
+
+    let mut seen = vec![];
+    
+
+    for bucket_num in &target_buckets {
+        if seen.contains(&bucket_num) {
+            continue;
+        } else {
+            seen.push(bucket_num);
+        }
+        // get multiplicity of each bucket number in the integer partition
+        let multiplicity = target_buckets
+            .iter()
+            .filter(|&num| num == bucket_num)
+            .count();
+        let mut count = 0;
+        for kk in 0..bucket_numbers.len() {
+            let current = bucket_numbers[kk];
+            if *bucket_num == current {
+                found_indices.push(kk);
+                count+=1;
+                if count == multiplicity {
+                    break;
+                }
+            }
         }
     }
 
