@@ -9,7 +9,7 @@ use std::f64::INFINITY;
 use smallvec::{SmallVec, smallvec};
 
 const EPSILON: f64 = 1e-8;
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 fn main() {
     println!("Lambda; Mean Response Time;");
@@ -26,12 +26,12 @@ fn main() {
     //let job_req_dist = Dist::Constant(0.45);
     let job_req_dist = Dist::Uniform(0.0, 1.0);
 
-    let policy = Policy::BPT(8);
+    let policy = Policy::IPB(8);
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 1..20 {
+    for lam_base in 13..20 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -138,6 +138,7 @@ enum Policy {
     DBEB,
     BPT(usize),
     AdaptiveDoubleBucket,
+    IPB(usize),
 }
 
 impl Policy {
@@ -157,7 +158,8 @@ impl Policy {
             | Policy::DBB(_)
             | Policy::DBEB
             | Policy::BPT(_)
-            | Policy::AdaptiveDoubleBucket => job.arrival_time,
+            | Policy::AdaptiveDoubleBucket
+            | Policy::IPB(_) => job.arrival_time,
         }
     }
 }
@@ -556,6 +558,7 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
             // only add score for new numbers because of the multiplicity calculation
             // (sorry)
             if seen.contains(&bucket_num) {
+   ddvec![1, 2, 3]
                 continue;
             } else {
                 seen.push(bucket_num);
@@ -584,9 +587,35 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
     //TODO: get indices from the top scoring integer partition. can use code from before.
     // let target_buckets = top_scorer.partition;
+    //
+
+    let target_buckets = top_scorer.partition;
+    if DEBUG {
+        println!("Chosen partition: {:?}",target_buckets);
+    }
+    let mut found_indices: Vec<usize> = vec![];
+
+    // thisll be less efficient than the powers of two one
+
+    let mut found_count: usize = 0;
+
+    for ii in 0..bucket_numbers.len() {
+        for jj in found_count..target_buckets.len() {
+           if target_buckets.contains(&bucket_numbers[ii]) {
+               found_indices.push(ii);
+               found_count += 1;
+           }
+           else {
+               continue;
+           }
+        }
+    }
+
+    // add backfilling:
     todo!();
 
-    vec![1, 2, 3]
+    assert!(found_indices.len() == target_buckets.len());
+    found_indices
 }
 
 fn lambda_to_k(lambda: f64) -> usize {
@@ -632,6 +661,8 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
         Policy::AdaptiveDoubleBucket => {
             eval_buckets(vec, length_to_k(vec.len()), u_lim, l_lim, false)
         }
+        Policy::IPB(k) => ipar_buckets(vec, k, false),
+        
     }
 }
 
