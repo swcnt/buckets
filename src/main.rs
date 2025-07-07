@@ -535,6 +535,10 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         .map(|b| b + 1)
         .collect();
 
+    if DEBUG {
+        println!("Bucket numbers: {:?}",bucket_numbers)
+    }
+
     // evaluate bucket set scores
     let mut ip_scores: Vec<score_ip> = vec![];
 
