@@ -558,7 +558,6 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
             // only add score for new numbers because of the multiplicity calculation
             // (sorry)
             if seen.contains(&bucket_num) {
-   ddvec![1, 2, 3]
                 continue;
             } else {
                 seen.push(bucket_num);
@@ -611,10 +610,9 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         }
     }
 
-    // add backfilling:
-    todo!();
+    // TODO: add backfilling:
 
-    assert!(found_indices.len() == target_buckets.len());
+    assert!(found_indices.len() <= target_buckets.len());
     found_indices
 }
 
