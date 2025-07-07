@@ -9,7 +9,7 @@ use std::f64::INFINITY;
 use smallvec::{SmallVec, smallvec};
 
 const EPSILON: f64 = 1e-8;
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 fn main() {
     println!("Lambda; Mean Response Time;");
@@ -19,7 +19,7 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 10_000_000;
+    let num_jobs = 100_000;
     let seed = 3;
 
     //homogenous job service requirement:
@@ -556,9 +556,9 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
     let mut ipar = Partitions::new(k);
 
-    while let Some(_) = ipar.next() {
+    while let Some(part) = ipar.next() {
         // get the current partition
-        let current_partition: Vec<usize> = ipar.next().unwrap().to_vec();
+        let current_partition: Vec<usize> = part.to_vec();
         let mut current_score: usize = 0;
         // iterate over the partition and match the counts to bucket_counts, then score
         let mut seen = vec![];
