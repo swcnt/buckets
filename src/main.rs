@@ -5,11 +5,11 @@ use rand::prelude::*;
 use rand_distr::Exp;
 use rand_distr::Gamma;
 use rand_distr::Uniform;
-use std::f64::INFINITY;
 use smallvec::{SmallVec, smallvec};
+use std::f64::INFINITY;
 
 const EPSILON: f64 = 1e-8;
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 fn main() {
     println!("Lambda; Mean Response Time;");
@@ -31,7 +31,7 @@ fn main() {
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 1..20 {
+    for lam_base in 15..20 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -119,30 +119,30 @@ impl Dist {
 #[derive(Debug, Clone, Copy)]
 enum Policy {
     // Baseline policies
-    FCFS, // First-Come First-Served
-    PLCFS, // Preemptive Last-Come First-Served
-    SRPT, // Shortest Remaining Processing Time
-    FCFSB, // First-Come First-Served, preemptive backfilling
-    SRPTB, // Shortest Remaining Processing Time, preemptive backfilling
-    PLCFSB, // Preemptive Last-Come First-Served
-    LSF, // Preemptive Least Servers First
-    LSFB, // Preemptive Least Servers First, preemptive backfilling
-    MSF, // Preemptive Most Servers First
-    MSFB, // Preemptive Most Servers First, preemptive backfilling
-    SRA, // Smallest remaining area
-    SRAB, // Smallest remaining area, preemptive backfilling
-    LRA, // Largest remaining area
-    LRAB, // Largest remaining area, preemptive backfilling
-    DB(usize), // Double bucket, explicit K
+    FCFS,       // First-Come First-Served
+    PLCFS,      // Preemptive Last-Come First-Served
+    SRPT,       // Shortest Remaining Processing Time
+    FCFSB,      // First-Come First-Served, preemptive backfilling
+    SRPTB,      // Shortest Remaining Processing Time, preemptive backfilling
+    PLCFSB,     // Preemptive Last-Come First-Served
+    LSF,        // Preemptive Least Servers First
+    LSFB,       // Preemptive Least Servers First, preemptive backfilling
+    MSF,        // Preemptive Most Servers First
+    MSFB,       // Preemptive Most Servers First, preemptive backfilling
+    SRA,        // Smallest remaining area
+    SRAB,       // Smallest remaining area, preemptive backfilling
+    LRA,        // Largest remaining area
+    LRAB,       // Largest remaining area, preemptive backfilling
+    DB(usize),  // Double bucket, explicit K
     DBB(usize), // Double bucket, explicit K, preemptive backfilling
-    DBE, // Double bucket, K based on lambda
-    DBEB, // Double bucket, K based on lambda, preemptive backfilling
+    DBE,        // Double bucket, K based on lambda
+    DBEB,       // Double bucket, K based on lambda, preemptive backfilling
     BPT(usize), // Bucket powers of 2, explicit K
     // TODO: BPT w/ backfilling
     AdaptiveDoubleBucket, // Double bucket, K based on queue length
     // TODO: Adaptive Double Bucket w/ backfilling
     IPB(usize), // Integer partitions buckets, explicit K
-    // TODO: IPB w/ backfilling
+                // TODO: IPB w/ backfilling
 }
 
 impl Policy {
@@ -245,7 +245,7 @@ fn backfill(vec: &Vec<Job>, num_servers: usize) -> Vec<usize> {
 }
 
 fn backfill_hogged(vec: &Vec<Job>, hogged: f64, hog_indices: Vec<usize>) -> Vec<usize> {
-    // backfilling function that takes in a vector of indices that have already been chosen 
+    // backfilling function that takes in a vector of indices that have already been chosen
     // by your policy. returns a vector of all indices that can be worked on after backfilling.
     let total_resource = 1.0;
     if DEBUG {
@@ -390,8 +390,8 @@ fn c_to_bucket_pair(c: usize) -> SmallVec<[usize; 2]> {
 
 fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // assigns buckets of powers of two to each job in a queue and returns indices corresponding to
-    // the highest-scoring set. 
-    
+    // the highest-scoring set.
+
     assert!((k & (k - 1)) == 0);
 
     // bucket 1 is the smallest bucket
@@ -450,7 +450,11 @@ fn p2_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // now we know the bucket scores. find the highest scoring set, then return non-repeating
     // indices to corresponding jobs
 
-    let (s_i, _big_score) = set_scores.iter().enumerate().max_by_key(|(_index, score)| *score).expect("At least one set");
+    let (s_i, _big_score) = set_scores
+        .iter()
+        .enumerate()
+        .max_by_key(|(_index, score)| *score)
+        .expect("At least one set");
     /*
     let big_score = *set_scores.iter().max().unwrap();
 
@@ -529,9 +533,113 @@ struct score_ip {
     score: usize,
 }
 
+#[derive(Debug, Clone)]
+struct scored_vec_mult {
+    vect: Vec<usize>,
+    multiplicities: Vec<usize>,
+    score: usize,
+}
+
+fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
+    // takes a k value and returns a vector of integer partitions with multiplicities of each
+    // number listed and no duplicates (hopefully)
+
+    let mut ipar = Partitions::new(k);
+    let mut partition_vector: Vec<scored_vec_mult> = vec![];
+
+    while let Some(part) = ipar.next() {
+        let current_partition: Vec<usize> = part.to_vec();
+        let mut no_duplicates: Vec<usize> = vec![];
+        let mut mults: Vec<usize> = vec![];
+
+        for ii in 0..current_partition.len() {
+            let num = current_partition[ii];
+            if no_duplicates.contains(&num) {
+                continue;
+            } else {
+                no_duplicates.push(num);
+                let multiplicity = current_partition.iter().filter(|&n| n == &num).count();
+                mults.push(multiplicity)
+            }
+        }
+        let current_set = scored_vec_mult {
+            vect: no_duplicates,
+            multiplicities: mults,
+            score: 0,
+        };
+        partition_vector.push(current_set);
+    }
+    partition_vector
+}
+
+fn vec_mult_to_work(job_vec: &Vec<Job>, k: usize, sets: Vec<scored_vec_mult>, backfill: bool,) -> Vec<usize> {
+    //smallest bucket is 1
+    let bucket_numbers: Vec<usize> = assign_buckets(&job_vec, k, 1.0, 0.0)
+        .iter()
+        .map(|b| b + 1)
+        .collect();
+    if DEBUG {
+        println!("Bucket numbers: {:?}", bucket_numbers)
+    }
+    let mut score_vec: Vec<scored_vec_mult> = sets.clone();
+
+    // bucket_counts is the quantity of jobs in each bucket
+
+    let mut bucket_counts = vec![0; k];
+    for &num in &bucket_numbers {
+        bucket_counts[num - 1] += 1
+    }
+
+    for qq in 0..score_vec.len() {
+        let set = score_vec[qq].clone();
+        let current_partition: Vec<usize> = set.vect;
+        let mul_vec = set.multiplicities;
+        let mut current_score: usize = 0;
+        for ii in 0..current_partition.len() {
+            let multiplicity = mul_vec[ii];
+            let count = bucket_counts[ii];
+            current_score += multiplicity.min(count);
+        }
+        score_vec[qq].score = current_score;
+    }
+
+    let score_vec_for_eval = score_vec.clone();
+
+    let top_scorer: scored_vec_mult = score_vec_for_eval
+        .iter()
+        .max_by_key(|p: &&scored_vec_mult| p.score)
+        .unwrap()
+        .clone();
+    let target_buckets = top_scorer.vect;
+    let target_reps = top_scorer.multiplicities;
+    assert!(target_buckets.len() == target_reps.len());
+
+    if DEBUG {
+        println!("Chosen partition: {:?} with multiplicities {:?}", target_buckets, target_reps);
+    }
+    let mut found_indices: Vec<usize> = vec![];
+
+    for jj in 0..target_buckets.len() {
+        let bucket_num = target_buckets[jj];
+        let multiplicity = target_reps[jj];
+        let mut count = 0;
+        for kk in 0..bucket_numbers.len() {
+            let current = bucket_numbers[kk];
+            if bucket_num == current {
+                found_indices.push(kk);
+                count += 1;
+                if count == multiplicity {
+                    break;
+                }
+            }
+        }
+    }
+    found_indices
+}
+
 fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     // assigns buckets of powers of two to each job in a queue and returns indices corresponding to
-    // the highest-scoring set. 
+    // the highest-scoring set.
 
     // smallest bucket is 1
     let bucket_numbers: Vec<usize> = assign_buckets(vec, k, 1.0, 0.0)
@@ -540,7 +648,7 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
         .collect();
 
     if DEBUG {
-        println!("Bucket numbers: {:?}",bucket_numbers)
+        println!("Bucket numbers: {:?}", bucket_numbers)
     }
 
     // evaluate bucket set scores
@@ -594,13 +702,12 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
 
     let target_buckets = top_scorer.partition;
     if DEBUG {
-        println!("Chosen partition: {:?}",target_buckets);
+        println!("Chosen partition: {:?}", target_buckets);
     }
     let mut found_indices: Vec<usize> = vec![];
 
     // thisll be less efficient than the powers of two one
 
-    let mut found_count: usize = 0;
     /*
     for ii in 0..bucket_numbers.len() {
         for jj in found_count..target_buckets.len() {
@@ -617,7 +724,6 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
     */
 
     let mut seen = vec![];
-    
 
     for bucket_num in &target_buckets {
         if seen.contains(&bucket_num) {
@@ -635,7 +741,7 @@ fn ipar_buckets(vec: &Vec<Job>, k: usize, backfill: bool) -> Vec<usize> {
             let current = bucket_numbers[kk];
             if *bucket_num == current {
                 found_indices.push(kk);
-                count+=1;
+                count += 1;
                 if count == multiplicity {
                     break;
                 }
@@ -691,9 +797,11 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
         Policy::BPT(k) => p2_buckets(vec, k, false),
         Policy::AdaptiveDoubleBucket => {
             eval_buckets(vec, length_to_k(vec.len()), u_lim, l_lim, false)
-        }
-        Policy::IPB(k) => ipar_buckets(vec, k, false),
-        
+        },
+        Policy::IPB(k) => {
+            let set_mul_vec = k_to_partitions_mults(k);
+            vec_mult_to_work(vec, k, set_mul_vec, false) 
+        },
     }
 }
 
