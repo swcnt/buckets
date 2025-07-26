@@ -9,7 +9,7 @@ use smallvec::{SmallVec, smallvec};
 use std::f64::INFINITY;
 
 const EPSILON: f64 = 1e-8;
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 fn main() {
     println!("Lambda; Mean Response Time;");
@@ -19,7 +19,7 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 100_000;
+    let num_jobs = 1_000_000;
     let seed = 3;
 
     //homogenous job service requirement:
@@ -31,7 +31,7 @@ fn main() {
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 15..20 {
+    for lam_base in 1..20 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
